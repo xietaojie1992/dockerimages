@@ -1,0 +1,129 @@
+version: "3"
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:13.3.5-ce.0'
+    restart: always
+    hostname: 'gitlab'
+    container_name: gitlab
+    ports:
+      - '23000:80'
+      - '23001:8443'
+      - '23002:22'
+    volumes:
+      - '${DATA_BASE}/gitlab/config:/etc/gitlab'
+      - '${DATA_BASE}/gitlab/logs:/var/log/gitlab'
+      - '${DATA_BASE}/gitlab/data:/var/opt/gitlab'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'https://gitlab.internal'  # git域名
+        unicorn['worker_timeout'] = 60
+        unicorn['worker_processes'] = 2
+        nginx['enable'] = true
+        nginx['client_max_body_size'] = '250m'
+        nginx['redirect_http_to_https'] = true
+        nginx['ssl_certificate'] = "/etc/ssl/gitlab.internal.crt" # 加密证书文件
+        nginx['ssl_certificate_key'] = "/etc/ssl/gitlab.internal.key"
+        nginx['ssl_ciphers'] = "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"
+        nginx['ssl_prefer_server_ciphers'] = "on"
+        nginx['ssl_protocols'] = "TLSv1.1 TLSv1.2"
+        nginx['ssl_session_cache'] = "builtin:1000  shared:SSL:10m"
+        nginx['listen_addresses'] = ["0.0.0.0"]
+        nginx['http2_enabled'] = true
+    network_mode: workflow
+
+  # jenkins:
+  #   build:
+  #     context: ./jenkins
+  #     dockerfile: Dockerfile
+  #   hostname: 'jenkins'
+  #   container_name: jenkins
+  #   restart: always
+  #   ports:
+  #     - '23100:8080'
+  #     - '23101:50000'
+  #   volumes:
+  #     - '${DATA_BASE}/jenkins:/var/jenkins_home'
+  #     - '${DATA_BASE}/jenkins/run/docker.sock:/var/run/docker.sock'
+  #   network_mode: workflow
+
+  jira:
+    image: atlassian/jira-software
+    container_name: jira
+    hostname: jira
+    restart: always
+    ports:
+      - 23200:8080
+    environment:
+      - ATL_PROXY_NAME=jira.${DOMAIN}
+      - ATL_PROXY_PORT=80
+      - ATL_TOMCAT_SCHEME=http 
+    network_mode: workflow
+
+  confluence:
+    image: atlassian/confluence-server:6.2.2
+    container_name: confluence
+    hostname: confluence
+    restart: always
+    ports:
+      - 23300:8090
+    environment:
+      - ATL_PROXY_NAME=confluence.${DOMAIN}
+      - ATL_PROXY_PORT=80
+      - ATL_TOMCAT_SCHEME=http 
+    network_mode: workflow
+
+  mysql:
+    image: mysql:5.7
+    container_name: mysql
+    hostname: mysql
+    restart: always
+    ports:
+      - "23306:3306"
+    volumes:
+      - ${DATA_BASE}/mysql/etc:/etc/mysql
+      - ${DATA_BASE}/mysql/data:/var/lib/mysql
+      - ${DATA_BASE}/mysql/log:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${ROOT_PASSWORD}"
+    network_mode: workflow
+
+  postgresql:
+    image: "postgres:10.9-alpine"
+    container_name: postgresql
+    hostname: prostgresql
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-jira}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jirapassword}
+      POSTGRES_DB: ${POSTGRES_DB:-jiradb}
+      POSTGRES_ENCODING: ${POSTGRES_ENCODING:-UNICODE}
+      POSTGRES_COLLATE: ${POSTGRES_COLLATE:-C}
+      POSTGRES_COLLATE_TYPE: ${POSTGRES_COLLATE_TYPE:-C}
+    volumes:
+      - "${DATA_BASE}/postgresql/data:/var/lib/postgresql/data"
+    network_mode: workflow
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    hostname: nginx
+    restart: always
+    ports:
+      - "80:80"
+    links:
+      - jira
+      - confluence
+      - gitlab
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ${DATA_BASE}/nginx/log:/var/log/nginx
+    environment:
+      - DOMAIN=${DOMAIN}
+    network_mode: workflow
+
+networks:
+  default:
+    external:
+      name: workflow
