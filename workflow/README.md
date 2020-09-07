@@ -6,6 +6,7 @@
 127.0.0.1 jira.internal
 127.0.0.1 confluence.internal
 127.0.0.1 gitlab.internal
+127.0.0.1 jenkins.internal
 ```
 
 直接运行：`docker-compose up -d`
