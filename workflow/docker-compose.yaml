@@ -31,29 +31,41 @@ services:
     network_mode: workflow
 
   jira:
-    image: atlassian/jira-software
+    image: atlassian/jira-software:latest
     container_name: jira
     hostname: jira
     restart: always
     ports:
       - 23200:8080
+    depends_on:
+      - postgresql
+    volumes:
+      - ${DATA_BASE}/jira:/var/atlassian/application-data/jira
     environment:
       - ATL_PROXY_NAME=jira.${DOMAIN}
       - ATL_PROXY_PORT=80
       - ATL_TOMCAT_SCHEME=http 
+      - JVM_MINIMUM_MEMORY=512m
+      - JVM_MAXIMUM_MEMORY=2048m
     network_mode: workflow
 
   confluence:
-    image: atlassian/confluence-server:6.2.2
+    image: atlassian/confluence-server:latest
     container_name: confluence
     hostname: confluence
     restart: always
     ports:
       - 23300:8090
+    depends_on:
+      - postgresql
+    volumes:
+      - ${DATA_BASE}/confluence:/var/atlassian/application-data/confluence
     environment:
       - ATL_PROXY_NAME=confluence.${DOMAIN}
       - ATL_PROXY_PORT=80
       - ATL_TOMCAT_SCHEME=http 
+      - JVM_MINIMUM_MEMORY=512m
+      - JVM_MAXIMUM_MEMORY=2048m
     network_mode: workflow
 
   mysql:
@@ -79,13 +91,15 @@ services:
     ports:
       - 5432:5432
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-jira}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-jirapassword}
-      POSTGRES_DB: ${POSTGRES_DB:-jiradb}
+      POSTGRES_MULTIPLE_DATABASES: jira,confluence
+      POSTGRES_USER: ${POSTGRES_USER:-test}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test}
+      # POSTGRES_DB: ${POSTGRES_DB:-jiradb}
       POSTGRES_ENCODING: ${POSTGRES_ENCODING:-UNICODE}
       POSTGRES_COLLATE: ${POSTGRES_COLLATE:-C}
       POSTGRES_COLLATE_TYPE: ${POSTGRES_COLLATE_TYPE:-C}
     volumes:
+      - ./postgresql:/docker-entrypoint-initdb.d
       - "${DATA_BASE}/postgresql/data:/var/lib/postgresql/data"
     network_mode: workflow
 
