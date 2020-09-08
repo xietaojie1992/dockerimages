@@ -84,7 +84,7 @@ services:
     network_mode: workflow
 
   postgresql:
-    image: "postgres:10.9-alpine"
+    image: "postgres:11.5-alpine"
     container_name: postgresql
     hostname: prostgresql
     restart: unless-stopped
@@ -92,8 +92,8 @@ services:
       - 5432:5432
     environment:
       POSTGRES_MULTIPLE_DATABASES: jira,confluence
-      POSTGRES_USER: ${POSTGRES_USER:-test}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       # POSTGRES_DB: ${POSTGRES_DB:-jiradb}
       POSTGRES_ENCODING: ${POSTGRES_ENCODING:-UNICODE}
       POSTGRES_COLLATE: ${POSTGRES_COLLATE:-C}
